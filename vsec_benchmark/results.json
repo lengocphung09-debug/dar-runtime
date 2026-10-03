@@ -1,0 +1,56 @@
+{
+  "protocol_id": "VLF68-VSEC-SPELLING-EMPIRICAL-01",
+  "canonical_records": 9341,
+  "canonical_error_annotations": 11202,
+  "split_counts": {
+    "train": 6577,
+    "dev": 1422,
+    "test": 1342
+  },
+  "train_error_lexicon_size": 3175,
+  "test_seen_gold_error_tokens": 1198,
+  "test_unseen_gold_error_tokens": 433,
+  "point_metrics": {
+    "TP": 1198,
+    "FP": 24872,
+    "FN": 433,
+    "TN": 14148,
+    "gold_errors": 1631,
+    "detection_precision": 0.04595320291522823,
+    "detection_recall": 0.7345187001839363,
+    "detection_f1": 0.08649507238005849,
+    "correction_exact_end_to_end_on_gold_errors": 0.5518087063151441,
+    "false_positive_rate_on_gold_correct_annotations": 0.6374167093798052,
+    "harm_rate": 0.6374167093798052
+  },
+  "bootstrap_95pct_CI": {
+    "detection_precision": [
+      0.044137931034482755,
+      0.047848401105408604
+    ],
+    "detection_recall": [
+      0.7117824773413898,
+      0.7556783302639656
+    ],
+    "detection_f1": [
+      0.08313565198350426,
+      0.08993812610489098
+    ],
+    "correction_exact_end_to_end_on_gold_errors": [
+      0.5279156327543424,
+      0.5760936537276649
+    ],
+    "false_positive_rate_on_gold_correct_annotations": [
+      0.6315912151662696,
+      0.6427928738527983
+    ],
+    "harm_rate": [
+      0.6315912151662696,
+      0.6427928738527983
+    ]
+  },
+  "bootstrap_resamples": 2000,
+  "seed": 6801,
+  "test_tuning": false,
+  "scope": "B0_TRAIN_LEXICON spelling stratum only"
+}
