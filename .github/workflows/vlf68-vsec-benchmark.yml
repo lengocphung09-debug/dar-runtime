@@ -20,7 +20,7 @@ jobs:
           import json,hashlib,collections,random,os,subprocess
           bb=open('VSEC.jsonl','rb').read()
           assert len(bb)==25130457,len(bb)
-          gitsha=hashlib.sha1(b'blob '+str(len(bb)).encode()+b'\\0'+bb).hexdigest()
+          gitsha=subprocess.run(['git','hash-object','--stdin'],input=bb,stdout=subprocess.PIPE,check=True).stdout.decode().strip()
           assert gitsha=='89c7be332a460a9e2fee243f52fa13edbb7bd7ce',gitsha
           rawlines=bb.splitlines(keepends=True); assert len(rawlines)==9341,len(rawlines)
           rows=[]
@@ -81,12 +81,9 @@ jobs:
           out={'protocol_id':'VLF68-VSEC-SPELLING-EMPIRICAL-02','evidence_class':'POST_INSPECTION_REPLICATION','canonical_records':len(rows),'canonical_error_annotations':err,'split_counts':{'train':len(tr),'dev':len(dv),'test':len(te)},'B1_dev_selected_threshold':thr,'B1_dev_candidate_f1':[{ 'threshold':t,'f1':f} for f,t in sorted(devscores,key=lambda x:x[1])],'B0':report('B0_TRAIN_ERROR_PRESENCE',evaluate(te,pred0)),'B1':report('B1_TRAIN_ERROR_RATE_DEV_THRESHOLD',evaluate(te,pred1)),'bootstrap_resamples':2000,'seed':6802,'test_tuning':False,'contamination_caveat':'Aggregate test metrics from invalidated Run-01 were observed before protocol amendment; Run-02 is not pristine confirmatory evidence.'}
           os.makedirs('vsec_benchmark',exist_ok=True)
           open('vsec_benchmark/results_02.json','w').write(json.dumps(out,ensure_ascii=False,indent=2))
-          prov={'materialized_bytes':len(bb),'sha256':hashlib.sha256(bb).hexdigest(),'git_blob_sha1':gitsha,'records':len(rows),'error_annotations':err,'newline_counts':{'CRLF':bb.count(b'\\r\
-'),'LF':bb.count(b'\
-')}}
+          prov={'materialized_bytes':len(bb),'sha256':hashlib.sha256(bb).hexdigest(),'git_blob_sha1':gitsha,'records':len(rows),'error_annotations':err}
           open('vsec_benchmark/provenance_02.json','w').write(json.dumps(prov,indent=2))
-          open('vsec_benchmark/run01_INVALIDATED.txt','w').write('Run 01 excluded: text-mode newline normalization violated preregistered raw-byte split/reconstruction.\
-')
+          open('vsec_benchmark/run01_INVALIDATED.txt','w').write('Run 01 excluded: text-mode newline normalization violated preregistered raw-byte split/reconstruction.')
           print(json.dumps(out,ensure_ascii=False,indent=2))
           
           PY
