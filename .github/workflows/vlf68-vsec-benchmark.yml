@@ -51,7 +51,7 @@ jobs:
           def agg(ss):
             x=[sum(z[i] for z in ss) for i in range(7)];tp,fp,fn,tn,ce,g,h=x
             p=tp/(tp+fp) if tp+fp else 0;r=tp/(tp+fn) if tp+fn else 0;f=2*p*r/(p+r) if p+r else 0
-            return {'TP':tp,'FP':fp,'FN':fn,'TN':tn,'gold_errors':g,'detection_precision':p,'detection_recall':r,'detection_f1':f,'correction_exact_end_to_end_on_gold_errors':ce/g if g else 0,'false_positive_rate_on_gold_correct_annotations':fp/(fp+tn) if fp+tn else 0,'harm_rate':harm/(fp+tn) if fp+tn else 0}
+            return {'TP':tp,'FP':fp,'FN':fn,'TN':tn,'gold_errors':g,'detection_precision':p,'detection_recall':r,'detection_f1':f,'correction_exact_end_to_end_on_gold_errors':ce/g if g else 0,'false_positive_rate_on_gold_correct_annotations':fp/(fp+tn) if fp+tn else 0,'harm_rate':h/(fp+tn) if fp+tn else 0}
           point=agg(S)
           rng=random.Random(6801); keys=['detection_precision','detection_recall','detection_f1','correction_exact_end_to_end_on_gold_errors','false_positive_rate_on_gold_correct_annotations','harm_rate']; dist={k:[] for k in keys}
           for _ in range(2000):
