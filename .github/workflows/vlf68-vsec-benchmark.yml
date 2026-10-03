@@ -15,9 +15,9 @@ jobs:
       - name: Execute amended preregistered benchmark
         run: |
           cat > /tmp/run.py <<'PY'
-          import json,hashlib,collections,random,os
-          parts=sorted(x for x in os.listdir('vsec_shards') if x.endswith('.jsonl'))
-          bb=b''.join(open('vsec_shards/'+x,'rb').read() for x in parts)
+          import json,hashlib,collections,random,os,base64,gzip
+          parts=sorted(x for x in os.listdir('vsec_transport_b64') if x.endswith('.b64'))
+          enc=b''.join(open('vsec_transport_b64/'+x,'rb').read() for x in parts)\n          bb=gzip.decompress(base64.b64decode(enc))
           assert len(bb)==25130457,len(bb)
           gitsha=hashlib.sha1(b'blob '+str(len(bb)).encode()+b'\\0'+bb).hexdigest()
           assert gitsha=='89c7be332a460a9e2fee243f52fa13edbb7bd7ce',gitsha
