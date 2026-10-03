@@ -1,0 +1,81 @@
+name: VLF68 VSEC empirical benchmark
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'vsec_benchmark/preregistration.json'
+      - '.github/workflows/vlf68-vsec-benchmark.yml'
+permissions:
+  contents: write
+jobs:
+  benchmark:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Execute preregistered benchmark
+        run: |
+          cat > /tmp/run.py <<'PY'
+          import json,hashlib,collections,random,math,statistics,os
+          rows=[]
+          for fn in sorted(x for x in os.listdir('vsec_shards') if x.endswith('.jsonl')):
+              with open('vsec_shards/'+fn,encoding='utf-8') as f:
+                  for line in f:
+                      raw=line.encode('utf-8'); r=json.loads(line); r['_raw']=raw; rows.append(r)
+          assert len(rows)==9341
+          err=sum(not a['is_correct'] for r in rows for a in r['annotations'])
+          assert err==11202,(err)
+          def bucket(r): return int(hashlib.sha256(r['_raw']).hexdigest()[:8],16)%100
+          tr=[r for r in rows if bucket(r)<70]; dv=[r for r in rows if 70<=bucket(r)<85]; te=[r for r in rows if bucket(r)>=85]
+          # train-only error -> correction frequency
+          M=collections.defaultdict(collections.Counter)
+          for r in tr:
+            for a in r['annotations']:
+              if not a['is_correct']:
+                for alt in a['alternative_syllables']: M[a['current_syllable']][alt]+=1
+          lex=set(M)
+          corr={k:sorted(v.items(),key=lambda z:(-z[1],z[0]))[0][0] for k,v in M.items() if v}
+          def sentence_counts(r):
+            tp=fp=fn=tn=ce2e=gold_err=harm=0
+            for a in r['annotations']:
+              pred=a['current_syllable'] in lex
+              gold=not a['is_correct']
+              if pred and gold: tp+=1
+              elif pred and not gold: fp+=1; harm+=1
+              elif (not pred) and gold: fn+=1
+              else: tn+=1
+              if gold:
+                gold_err+=1
+                if pred and corr.get(a['current_syllable']) in a['alternative_syllables']: ce2e+=1
+            return (tp,fp,fn,tn,ce2e,gold_err,harm)
+          S=[sentence_counts(r) for r in te]
+          def agg(ss):
+            x=[sum(z[i] for z in ss) for i in range(7)];tp,fp,fn,tn,ce,g,h=x
+            p=tp/(tp+fp) if tp+fp else 0;r=tp/(tp+fn) if tp+fn else 0;f=2*p*r/(p+r) if p+r else 0
+            return {'TP':tp,'FP':fp,'FN':fn,'TN':tn,'gold_errors':g,'detection_precision':p,'detection_recall':r,'detection_f1':f,'correction_exact_end_to_end_on_gold_errors':ce/g if g else 0,'false_positive_rate_on_gold_correct_annotations':fp/(fp+tn) if fp+tn else 0,'harm_rate':harm/(fp+tn) if fp+tn else 0}
+          point=agg(S)
+          rng=random.Random(6801); keys=['detection_precision','detection_recall','detection_f1','correction_exact_end_to_end_on_gold_errors','false_positive_rate_on_gold_correct_annotations','harm_rate']; dist={k:[] for k in keys}
+          for _ in range(2000):
+            ss=[S[rng.randrange(len(S))] for _ in S]; a=agg(ss)
+            for k in keys: dist[k].append(a[k])
+          ci={}
+          for k,v in dist.items():
+            v.sort();ci[k]=[v[int(.025*(len(v)-1))],v[int(.975*(len(v)-1))]]
+          seen_gold=sum(1 for r in te for a in r['annotations'] if (not a['is_correct']) and a['current_syllable'] in lex)
+          unseen_gold=point['gold_errors']-seen_gold
+          out={'protocol_id':'VLF68-VSEC-SPELLING-EMPIRICAL-01','canonical_records':len(rows),'canonical_error_annotations':err,'split_counts':{'train':len(tr),'dev':len(dv),'test':len(te)},'train_error_lexicon_size':len(lex),'test_seen_gold_error_tokens':seen_gold,'test_unseen_gold_error_tokens':unseen_gold,'point_metrics':point,'bootstrap_95pct_CI':ci,'bootstrap_resamples':2000,'seed':6801,'test_tuning':False,'scope':'B0_TRAIN_LEXICON spelling stratum only'}
+          open('vsec_benchmark/results.json','w').write(json.dumps(out,ensure_ascii=False,indent=2))
+          # provenance
+          bb=b''.join(r['_raw'] for r in rows)
+          prov={'materialized_bytes':len(bb),'sha256':hashlib.sha256(bb).hexdigest(),'git_blob_sha1':hashlib.sha1(b'blob '+str(len(bb)).encode()+b'\\0'+bb).hexdigest(),'records':len(rows),'error_annotations':err}
+          open('vsec_benchmark/provenance.json','w').write(json.dumps(prov,indent=2))
+          print(json.dumps(out,ensure_ascii=False,indent=2))
+          
+          PY
+          python /tmp/run.py
+      - name: Commit immutable evidence outputs
+        run: |
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          git add vsec_benchmark/results.json vsec_benchmark/provenance.json
+          git commit -m "Record VLF-6.8 VSEC empirical evidence"
+          git push
