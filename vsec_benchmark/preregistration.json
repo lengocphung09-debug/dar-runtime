@@ -1,0 +1,41 @@
+{
+  "protocol_id": "VLF68-VSEC-SPELLING-EMPIRICAL-01",
+  "frozen_before_test_execution": true,
+  "source": {
+    "canonical_repo": "VSEC2021/VSEC",
+    "path": "Dataset/VSEC.jsonl",
+    "bytes": 25130457,
+    "records": 9341,
+    "git_blob_sha1": "89c7be332a460a9e2fee243f52fa13edbb7bd7ce"
+  },
+  "split": {
+    "unit": "JSONL record",
+    "key": "SHA256(raw canonical JSONL line bytes)",
+    "rule": "int(first 8 hex,16)%100",
+    "train": "0-69",
+    "dev": "70-84",
+    "test": "85-99"
+  },
+  "gold": {
+    "error": "annotation.is_correct == false",
+    "correction": "annotation.alternative_syllables; exact match against any listed alternative"
+  },
+  "baseline": {
+    "id": "B0_TRAIN_LEXICON",
+    "training": "train only",
+    "detector": "flag current_syllable iff observed as erroneous in train",
+    "corrector": "most frequent train gold alternative for current_syllable; lexical tie broken Unicode codepoint order",
+    "dev_use": "none; fixed baseline has no tuned threshold"
+  },
+  "primary_metrics": [
+    "detection_precision",
+    "detection_recall",
+    "detection_f1",
+    "correction_exact_end_to_end_on_gold_errors",
+    "false_positive_rate_on_gold_correct_annotations",
+    "harm_rate"
+  ],
+  "uncertainty": "nonparametric bootstrap 2000 resamples over test sentences, seed 6801, 95% percentile CI",
+  "no_test_tuning": true,
+  "adjudication": "PASS only within this spelling-stratum/baseline envelope if evidence complete; no open-domain or full ErrorFamily inference"
+}
