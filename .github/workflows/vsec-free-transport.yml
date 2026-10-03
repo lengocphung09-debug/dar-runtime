@@ -1,0 +1,42 @@
+name: VSEC free transport bridge
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - 'vsec_shards/**'
+permissions:
+  contents: write
+jobs:
+  shard:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download canonical VSEC and verify identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -L --fail --retry 3 -o VSEC.jsonl https://raw.githubusercontent.com/VSEC2021/VSEC/main/Dataset/VSEC.jsonl
+          test "$(wc -c < VSEC.jsonl)" -eq 25130457
+          test "$(wc -l < VSEC.jsonl)" -eq 9341
+          python - <<'PY'
+          import hashlib
+          b=open('VSEC.jsonl','rb').read()
+          gitsha=hashlib.sha1(b'blob '+str(len(b)).encode()+b'\0'+b).hexdigest()
+          assert gitsha=='89c7be332a460a9e2fee243f52fa13edbb7bd7ce', gitsha
+          print(gitsha)
+          PY
+      - name: Split into connector-readable shards
+        run: |
+          rm -rf vsec_shards
+          mkdir vsec_shards
+          split -d -a 3 -l 50 --additional-suffix=.jsonl VSEC.jsonl vsec_shards/part_
+          sha256sum VSEC.jsonl > vsec_shards/CANONICAL_SHA256.txt
+          wc -c -l VSEC.jsonl > vsec_shards/CANONICAL_COUNTS.txt
+          printf '%s\n' '89c7be332a460a9e2fee243f52fa13edbb7bd7ce' > vsec_shards/CANONICAL_GIT_BLOB_SHA1.txt
+      - name: Commit shards
+        run: |
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          git add vsec_shards
+          git commit -m "Materialize canonical VSEC as connector-readable shards"
+          git push
