@@ -15,7 +15,7 @@ jobs:
       - name: Execute amended preregistered benchmark
         run: |
           cat > /tmp/run.py <<'PY'
-          import json,hashlib,collections,random,os,base64,gzip
+          import json,hashlib,collections,random,os,base64,gzip,subprocess
           parts=sorted(x for x in os.listdir('vsec_transport_b64') if x.endswith('.b64'))
           enc=b''.join(open('vsec_transport_b64/'+x,'rb').read() for x in parts)
           bb=gzip.decompress(base64.b64decode(enc))
