@@ -3,7 +3,7 @@ on:
   push:
     branches: [main]
     paths:
-      - 'vsec_benchmark/preregistration.json'
+      - 'vsec_benchmark/preregistration_amendment_02.json'
       - '.github/workflows/vlf68-vsec-benchmark.yml'
 permissions:
   contents: write
@@ -12,70 +12,85 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Execute preregistered benchmark
+      - name: Execute amended preregistered benchmark
         run: |
           cat > /tmp/run.py <<'PY'
-          import json,hashlib,collections,random,math,statistics,os
+          import json,hashlib,collections,random,os
+          parts=sorted(x for x in os.listdir('vsec_shards') if x.endswith('.jsonl'))
+          bb=b''.join(open('vsec_shards/'+x,'rb').read() for x in parts)
+          assert len(bb)==25130457,len(bb)
+          gitsha=hashlib.sha1(b'blob '+str(len(bb)).encode()+b'\\0'+bb).hexdigest()
+          assert gitsha=='89c7be332a460a9e2fee243f52fa13edbb7bd7ce',gitsha
+          rawlines=bb.splitlines(keepends=True); assert len(rawlines)==9341,len(rawlines)
           rows=[]
-          for fn in sorted(x for x in os.listdir('vsec_shards') if x.endswith('.jsonl')):
-              with open('vsec_shards/'+fn,encoding='utf-8') as f:
-                  for line in f:
-                      raw=line.encode('utf-8'); r=json.loads(line); r['_raw']=raw; rows.append(r)
-          assert len(rows)==9341
-          err=sum(not a['is_correct'] for r in rows for a in r['annotations'])
-          assert err==11202,(err)
+          for raw in rawlines:
+           r=json.loads(raw.decode('utf-8')); r['_raw']=raw; rows.append(r)
+          err=sum(not a['is_correct'] for r in rows for a in r['annotations']); assert err==11202,err
           def bucket(r): return int(hashlib.sha256(r['_raw']).hexdigest()[:8],16)%100
-          tr=[r for r in rows if bucket(r)<70]; dv=[r for r in rows if 70<=bucket(r)<85]; te=[r for r in rows if bucket(r)>=85]
-          # train-only error -> correction frequency
-          M=collections.defaultdict(collections.Counter)
-          for r in tr:
+          tr=[r for r in rows if bucket(r)<70];dv=[r for r in rows if 70<=bucket(r)<85];te=[r for r in rows if bucket(r)>=85]
+          def train_stats(rs):
+           total=collections.Counter();bad=collections.Counter();alts=collections.defaultdict(collections.Counter)
+           for r in rs:
             for a in r['annotations']:
-              if not a['is_correct']:
-                for alt in a['alternative_syllables']: M[a['current_syllable']][alt]+=1
-          lex=set(M)
-          corr={k:sorted(v.items(),key=lambda z:(-z[1],z[0]))[0][0] for k,v in M.items() if v}
-          def sentence_counts(r):
-            tp=fp=fn=tn=ce2e=gold_err=harm=0
+             w=a['current_syllable'];total[w]+=1
+             if not a['is_correct']:
+              bad[w]+=1
+              for z in a['alternative_syllables']:alts[w][z]+=1
+           return total,bad,alts
+          total,bad,alts=train_stats(tr)
+          corr={k:sorted(v.items(),key=lambda z:(-z[1],z[0]))[0][0] for k,v in alts.items() if v}
+          def evaluate(rs,pred):
+           S=[]
+           for r in rs:
+            tp=fp=fn=tn=ce=g=h=0
             for a in r['annotations']:
-              pred=a['current_syllable'] in lex
-              gold=not a['is_correct']
-              if pred and gold: tp+=1
-              elif pred and not gold: fp+=1; harm+=1
-              elif (not pred) and gold: fn+=1
-              else: tn+=1
-              if gold:
-                gold_err+=1
-                if pred and corr.get(a['current_syllable']) in a['alternative_syllables']: ce2e+=1
-            return (tp,fp,fn,tn,ce2e,gold_err,harm)
-          S=[sentence_counts(r) for r in te]
-          def agg(ss):
-            x=[sum(z[i] for z in ss) for i in range(7)];tp,fp,fn,tn,ce,g,h=x
-            p=tp/(tp+fp) if tp+fp else 0;r=tp/(tp+fn) if tp+fn else 0;f=2*p*r/(p+r) if p+r else 0
-            return {'TP':tp,'FP':fp,'FN':fn,'TN':tn,'gold_errors':g,'detection_precision':p,'detection_recall':r,'detection_f1':f,'correction_exact_end_to_end_on_gold_errors':ce/g if g else 0,'false_positive_rate_on_gold_correct_annotations':fp/(fp+tn) if fp+tn else 0,'harm_rate':h/(fp+tn) if fp+tn else 0}
-          point=agg(S)
-          rng=random.Random(6801); keys=['detection_precision','detection_recall','detection_f1','correction_exact_end_to_end_on_gold_errors','false_positive_rate_on_gold_correct_annotations','harm_rate']; dist={k:[] for k in keys}
-          for _ in range(2000):
-            ss=[S[rng.randrange(len(S))] for _ in S]; a=agg(ss)
-            for k in keys: dist[k].append(a[k])
-          ci={}
-          for k,v in dist.items():
+             pr=pred(a['current_syllable']); gold=not a['is_correct']
+             if pr and gold:tp+=1
+             elif pr and not gold:fp+=1;h+=1
+             elif (not pr) and gold:fn+=1
+             else:tn+=1
+             if gold:
+              g+=1
+              if pr and corr.get(a['current_syllable']) in a['alternative_syllables']:ce+=1
+            S.append((tp,fp,fn,tn,ce,g,h))
+           return S
+          def agg(S):
+           x=[sum(z[i] for z in S) for i in range(7)];tp,fp,fn,tn,ce,g,h=x
+           p=tp/(tp+fp) if tp+fp else 0;r=tp/(tp+fn) if tp+fn else 0;f=2*p*r/(p+r) if p+r else 0
+           return {'TP':tp,'FP':fp,'FN':fn,'TN':tn,'gold_errors':g,'detection_precision':p,'detection_recall':r,'detection_f1':f,'correction_exact_end_to_end_on_gold_errors':ce/g if g else 0,'false_positive_rate_on_gold_correct_annotations':fp/(fp+tn) if fp+tn else 0,'harm_rate':h/(fp+tn) if fp+tn else 0}
+          # B0 fixed
+          pred0=lambda w:w in bad
+          # B1 dev-only threshold selection
+          cands=[i/10 for i in range(1,10)]
+          devscores=[]
+          for t in cands:
+           pred=lambda w,t=t:(bad[w]/total[w] if total[w] else 0)>=t
+           devscores.append((agg(evaluate(dv,pred))['detection_f1'],t))
+          best=max(devscores,key=lambda x:(x[0],x[1]));thr=best[1]
+          pred1=lambda w:(bad[w]/total[w] if total[w] else 0)>=thr
+          def report(name,S):
+           point=agg(S);keys=['detection_precision','detection_recall','detection_f1','correction_exact_end_to_end_on_gold_errors','false_positive_rate_on_gold_correct_annotations','harm_rate'];dist={k:[] for k in keys};rng=random.Random(6802)
+           for _ in range(2000):
+            ss=[S[rng.randrange(len(S))] for _ in S];a=agg(ss)
+            for k in keys:dist[k].append(a[k])
+           ci={}
+           for k,v in dist.items():
             v.sort();ci[k]=[v[int(.025*(len(v)-1))],v[int(.975*(len(v)-1))]]
-          seen_gold=sum(1 for r in te for a in r['annotations'] if (not a['is_correct']) and a['current_syllable'] in lex)
-          unseen_gold=point['gold_errors']-seen_gold
-          out={'protocol_id':'VLF68-VSEC-SPELLING-EMPIRICAL-01','canonical_records':len(rows),'canonical_error_annotations':err,'split_counts':{'train':len(tr),'dev':len(dv),'test':len(te)},'train_error_lexicon_size':len(lex),'test_seen_gold_error_tokens':seen_gold,'test_unseen_gold_error_tokens':unseen_gold,'point_metrics':point,'bootstrap_95pct_CI':ci,'bootstrap_resamples':2000,'seed':6801,'test_tuning':False,'scope':'B0_TRAIN_LEXICON spelling stratum only'}
-          open('vsec_benchmark/results.json','w').write(json.dumps(out,ensure_ascii=False,indent=2))
-          # provenance
-          bb=b''.join(r['_raw'] for r in rows)
-          prov={'materialized_bytes':len(bb),'sha256':hashlib.sha256(bb).hexdigest(),'git_blob_sha1':hashlib.sha1(b'blob '+str(len(bb)).encode()+b'\\0'+bb).hexdigest(),'records':len(rows),'error_annotations':err}
-          open('vsec_benchmark/provenance.json','w').write(json.dumps(prov,indent=2))
+           return {'model':name,'point_metrics':point,'bootstrap_95pct_CI':ci}
+          out={'protocol_id':'VLF68-VSEC-SPELLING-EMPIRICAL-02','evidence_class':'POST_INSPECTION_REPLICATION','canonical_records':len(rows),'canonical_error_annotations':err,'split_counts':{'train':len(tr),'dev':len(dv),'test':len(te)},'B1_dev_selected_threshold':thr,'B1_dev_candidate_f1':[{ 'threshold':t,'f1':f} for f,t in sorted(devscores,key=lambda x:x[1])],'B0':report('B0_TRAIN_ERROR_PRESENCE',evaluate(te,pred0)),'B1':report('B1_TRAIN_ERROR_RATE_DEV_THRESHOLD',evaluate(te,pred1)),'bootstrap_resamples':2000,'seed':6802,'test_tuning':False,'contamination_caveat':'Aggregate test metrics from invalidated Run-01 were observed before protocol amendment; Run-02 is not pristine confirmatory evidence.'}
+          os.makedirs('vsec_benchmark',exist_ok=True)
+          open('vsec_benchmark/results_02.json','w').write(json.dumps(out,ensure_ascii=False,indent=2))
+          prov={'materialized_bytes':len(bb),'sha256':hashlib.sha256(bb).hexdigest(),'git_blob_sha1':gitsha,'records':len(rows),'error_annotations':err,'newline_counts':{'CRLF':bb.count(b'\\r\\n'),'LF':bb.count(b'\\n')}}
+          open('vsec_benchmark/provenance_02.json','w').write(json.dumps(prov,indent=2))
+          open('vsec_benchmark/run01_INVALIDATED.txt','w').write('Run 01 excluded: text-mode newline normalization violated preregistered raw-byte split/reconstruction.\\n')
           print(json.dumps(out,ensure_ascii=False,indent=2))
           
           PY
           python /tmp/run.py
-      - name: Commit immutable evidence outputs
+      - name: Commit evidence outputs
         run: |
           git config user.name github-actions
           git config user.email github-actions@github.com
-          git add vsec_benchmark/results.json vsec_benchmark/provenance.json
-          git commit -m "Record VLF-6.8 VSEC empirical evidence"
+          git add vsec_benchmark/results_02.json vsec_benchmark/provenance_02.json vsec_benchmark/run01_INVALIDATED.txt
+          git commit -m "Record VLF-6.8 VSEC empirical evidence run 02"
           git push
