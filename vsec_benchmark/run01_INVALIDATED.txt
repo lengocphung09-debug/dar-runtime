@@ -1,0 +1,1 @@
+Run 01 excluded: text-mode newline normalization violated preregistered raw-byte split/reconstruction.

@@ -1,0 +1,138 @@
+{
+  "protocol_id": "VLF68-VSEC-SPELLING-EMPIRICAL-02",
+  "evidence_class": "POST_INSPECTION_REPLICATION",
+  "canonical_records": 9341,
+  "canonical_error_annotations": 11202,
+  "split_counts": {
+    "train": 6577,
+    "dev": 1422,
+    "test": 1342
+  },
+  "B1_dev_selected_threshold": 0.4,
+  "B1_dev_candidate_f1": [
+    {
+      "threshold": 0.1,
+      "f1": 0.43685464654487693
+    },
+    {
+      "threshold": 0.2,
+      "f1": 0.5089531680440771
+    },
+    {
+      "threshold": 0.3,
+      "f1": 0.5226928895612708
+    },
+    {
+      "threshold": 0.4,
+      "f1": 0.5240893066980024
+    },
+    {
+      "threshold": 0.5,
+      "f1": 0.5202541699761716
+    },
+    {
+      "threshold": 0.6,
+      "f1": 0.5016501650165017
+    },
+    {
+      "threshold": 0.7,
+      "f1": 0.4909473684210526
+    },
+    {
+      "threshold": 0.8,
+      "f1": 0.47955706984667806
+    },
+    {
+      "threshold": 0.9,
+      "f1": 0.4681583476764199
+    }
+  ],
+  "B0": {
+    "model": "B0_TRAIN_ERROR_PRESENCE",
+    "point_metrics": {
+      "TP": 1198,
+      "FP": 24872,
+      "FN": 433,
+      "TN": 14148,
+      "gold_errors": 1631,
+      "detection_precision": 0.04595320291522823,
+      "detection_recall": 0.7345187001839363,
+      "detection_f1": 0.08649507238005849,
+      "correction_exact_end_to_end_on_gold_errors": 0.5518087063151441,
+      "false_positive_rate_on_gold_correct_annotations": 0.6374167093798052,
+      "harm_rate": 0.6374167093798052
+    },
+    "bootstrap_95pct_CI": {
+      "detection_precision": [
+        0.04410989838163342,
+        0.04780876494023904
+      ],
+      "detection_recall": [
+        0.7125603864734299,
+        0.7561576354679803
+      ],
+      "detection_f1": [
+        0.0831508275589703,
+        0.08981948403127969
+      ],
+      "correction_exact_end_to_end_on_gold_errors": [
+        0.5271084337349398,
+        0.5758133824432167
+      ],
+      "false_positive_rate_on_gold_correct_annotations": [
+        0.6317798109487944,
+        0.6430079625531049
+      ],
+      "harm_rate": [
+        0.6317798109487944,
+        0.6430079625531049
+      ]
+    }
+  },
+  "B1": {
+    "model": "B1_TRAIN_ERROR_RATE_DEV_THRESHOLD",
+    "point_metrics": {
+      "TP": 625,
+      "FP": 130,
+      "FN": 1006,
+      "TN": 38890,
+      "gold_errors": 1631,
+      "detection_precision": 0.8278145695364238,
+      "detection_recall": 0.38320049049662785,
+      "detection_f1": 0.5238893545683152,
+      "correction_exact_end_to_end_on_gold_errors": 0.31759656652360513,
+      "false_positive_rate_on_gold_correct_annotations": 0.0033316248077908763,
+      "harm_rate": 0.0033316248077908763
+    },
+    "bootstrap_95pct_CI": {
+      "detection_precision": [
+        0.7981770833333334,
+        0.8565683646112601
+      ],
+      "detection_recall": [
+        0.35762400489895896,
+        0.40870098039215685
+      ],
+      "detection_f1": [
+        0.49679897567221515,
+        0.5496056454960565
+      ],
+      "correction_exact_end_to_end_on_gold_errors": [
+        0.29390018484288355,
+        0.34144778987828317
+      ],
+      "false_positive_rate_on_gold_correct_annotations": [
+        0.002702841845140033,
+        0.00396401095318816
+      ],
+      "harm_rate": [
+        0.002702841845140033,
+        0.00396401095318816
+      ]
+    }
+  },
+  "bootstrap_resamples": 2000,
+  "seed": 6802,
+  "test_tuning": false,
+  "contamination_caveat": "Aggregate test metrics from invalidated Run-01 were observed before protocol amendment; Run-02 is not pristine confirmatory evidence."
+}
