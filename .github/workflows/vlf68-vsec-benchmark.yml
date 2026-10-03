@@ -12,8 +12,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Execute amended preregistered benchmark
-        run: |
+      - name: Download canonical VSEC\n        run: curl -L --fail --retry 3 -o VSEC.jsonl https://raw.githubusercontent.com/VSEC2021/VSEC/main/Dataset/VSEC.jsonl\n      - name: Execute amended preregistered benchmark\n        run: |
           cat > /tmp/run.py <<'PY'
           import json,hashlib,collections,random,os,base64,gzip,subprocess
           parts=sorted(x for x in os.listdir('vsec_transport_b64') if x.endswith('.b64'))
