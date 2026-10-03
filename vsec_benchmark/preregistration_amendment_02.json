@@ -1,0 +1,34 @@
+{
+  "protocol_id": "VLF68-VSEC-SPELLING-EMPIRICAL-02",
+  "status": "AMENDMENT_AFTER_INVALIDATED_RUN_01",
+  "reason": "Run 01 used Python text-mode shard reads, normalizing CRLF to LF; this violated the preregistered raw-line-byte split key and canonical byte reconstruction. Run 01 is excluded from qualification evidence.",
+  "contamination_caveat": "Run-01 aggregate test metrics were observed before this amendment. Therefore Run-02 test results are replication/post-inspection evidence, not pristine confirmatory evidence.",
+  "source": {
+    "bytes": 25130457,
+    "records": 9341,
+    "errors": 11202,
+    "git_blob_sha1": "89c7be332a460a9e2fee243f52fa13edbb7bd7ce"
+  },
+  "parser": "binary shard reads; concatenate exact bytes; splitlines(keepends=True); JSON decode each raw line",
+  "split": {
+    "key": "SHA256(exact raw canonical JSONL line bytes including original line terminator)",
+    "rule": "int(first 8 hex,16)%100",
+    "train": "0-69",
+    "dev": "70-84",
+    "test": "85-99"
+  },
+  "models": {
+    "B0": "train erroneous-token presence baseline, unchanged",
+    "B1": "train P(error|surface); choose threshold from [0.1,0.2,...,0.9] by maximum DEV detection F1 only; tie -> higher threshold; correction = most frequent TRAIN gold alternative, Unicode tie-break"
+  },
+  "metrics": [
+    "detection_precision",
+    "detection_recall",
+    "detection_f1",
+    "correction_exact_end_to_end_on_gold_errors",
+    "false_positive_rate_on_gold_correct_annotations",
+    "harm_rate"
+  ],
+  "bootstrap": "2000 sentence resamples, seed 6802, 95% percentile CI",
+  "qualification_rule": "May establish external empirical evidence for spelling stratum with contamination caveat; MUST NOT be labeled pristine confirmatory or generalized to full ErrorFamily/open-domain."
+}
